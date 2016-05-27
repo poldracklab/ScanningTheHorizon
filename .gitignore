@@ -3,3 +3,4 @@ david_data.txt
 tal_data.txt
 GroupAnalyses/tfMRI*
 SingleSubject*
+CreateMasks/masks/*
