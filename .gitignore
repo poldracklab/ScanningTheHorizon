@@ -1,6 +1,3 @@
-*.nii.gz
-david_data.txt
-tal_data.txt
-GroupAnalyses/tfMRI*
+HCP_group_effect_sizes/*.nii.gz
 SingleSubject*
-CreateMasks/masks/*
+HCP_group_effect_sizes/CreateMasks/masks/*
