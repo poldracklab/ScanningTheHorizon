@@ -23,3 +23,5 @@ In this repository, we explore the effect sizes of common psychological paradigm
 || Right amygdala |
 | Gambling | Left accumbens |
 || Right accumbens |
+
+4. **EffectSize**: This script computes Cohen's D over the whole brain and takes the median (and the 10 and 90 percentile) within the masks created before.  Featquery is called to compute %BOLD change within the masks (and outputs as well the 10 and 90 percentile).
