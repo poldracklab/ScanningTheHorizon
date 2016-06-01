@@ -7,4 +7,4 @@ The repository consists of two parts:
 - **HCP_group_effect_sizes**: contains the code to construct a table with effect sizes of some common experimental paradigms.  
 
 
-![ReqEff](FIG_samplesize_year/ReqEffSize.jpg)
+![ReqEff](Fig_power/ReqEffSize.jpg)
