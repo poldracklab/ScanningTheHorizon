@@ -5,6 +5,8 @@
 #SBATCH --error=error/err.EffectSizes
 #SBATCH --time=3:00:00
 #SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
 #SBATCH --partition=russpold
 #SBATCH --qos=russpold
 
@@ -29,6 +31,6 @@ for exp in {0..3} ; do
   python $WorkDir/GroupAnalyses/make_design.py $SubjectsFile $ConnectomeInABoxDir ${Paradigm[exp]} ${Contrast[exp]} $ConDir
 
   # Analyze group stats
-  feat $ConDir/design
+  feat $ConDir/design &
 
 done
