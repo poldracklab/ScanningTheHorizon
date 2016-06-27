@@ -33,7 +33,7 @@ VarCopeFile = os.path.join(ConDir,'group.gfeat','cope1.feat','stats','varcope1.n
 VarCope = nib.load(VarCopeFile).get_data()
 
 # Compute Cohens D
-D = Cope/np.sqrt(VarCope/186)
+D = Cope/np.sqrt(VarCope)/np.sqrt(186)
 
 # extract coordinates of masks
 for a in range(len(Masks[Contrast])):

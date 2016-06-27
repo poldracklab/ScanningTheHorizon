@@ -34,3 +34,5 @@ for exp in {0..3} ; do
   feat $ConDir/design &
 
 done
+
+wait
