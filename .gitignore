@@ -2,3 +2,5 @@ HCP_group_effect_sizes/*.nii.gz
 SingleSubject*
 HCP_group_effect_sizes/CreateMasks/masks/*
 HCP_group_effect_sizes/GroupAnalyses/tfMRI_*/group.gfeat/
+*.docx
+
