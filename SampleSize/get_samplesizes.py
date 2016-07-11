@@ -5,6 +5,7 @@ and neurosynth automatic estimates
 Copyright Russell Poldrack, 2016
 """
 
+import os
 import numpy
 import xlrd
 import requests
@@ -12,82 +13,111 @@ from Bio import Entrez
 import pickle
 import time
 
-Entrez.email='poldrack@stanford.edu'
+# should change this to your own email address
+Entrez.email='slacker@harvard.edu'
 
 # first load David et al data from excel spreadsheet provided by Sean David
+def load_david_worksheet(fname='fMRI MA significance bias database 03-24-13.xlsx',
+    verbose=False):
+    workbook = xlrd.open_workbook(fname)
+    sheet=workbook.sheet_by_name('Original Sheet')
 
-workbook = xlrd.open_workbook('fMRI MA significance bias database 03-24-13.xlsx')
-sheet=workbook.sheet_by_name('Original Sheet')
+    studies={}
+    all_ids=[]
 
+    # load identifier and N value from spreadsheet cells
 
-id=[]
-studies={}
-ids=[]
+    for i in range(1,sheet.nrows):
+        idval=sheet.cell(i,5).value
 
-for i in range(1,sheet.nrows):
-    try:
-        id=sheet.cell(i,5).value.replace("doi:",'').replace(' ','')
-    except:
-        id=int(sheet.cell(i,5).value)
+        if idval == xlrd.empty_cell.value:
+            continue
 
-    if id == xlrd.empty_cell.value:
-        continue
+        # check for cases with no DOI or PMID
+        if str(idval).find('No')==0:
+            print('skipping',idval)
+            continue
 
-    n=sheet.cell(i,6)
-    try:
-        int(n.value)
-    except:
-        print('bad value: %s'%n.value)
+        # determine whether it's a doi or pmid and treat accordingly
+        try:
+            id=int(idval)
+            is_pmid=True
+        except ValueError:
+            is_pmid=False
 
-    if not n.value == xlrd.empty_cell.value:
-        if not id in studies:
+        if not is_pmid:
+            try:
+                id=idval.split('doi:')[1].replace(' ','') #.replace("doi:",'')
+            except:
+                print('bad identifier',idval)
+                continue
+
+        if not id in studies.keys():
             studies[id]=[]
-        ids.append(id)
 
+        # get sample size value
+        n=sheet.cell(i,6).value
+        if n==xlrd.empty_cell.value:
+            if verbose:
+                print('no value for',id)
+            continue
+
+        try:
+            nval=int(n)
+        except ValueError:
+            print('skipping bad value: %s'%n)
+
+        all_ids.append(id)
         studies[id].append(sheet.cell(i,6).value)
 
-unique_ids=list(set(ids))
-print('found %d  ids'%len(ids))
-print('found %d unique ids'%len(unique_ids))
+    unique_ids=list(studies.keys())
+    print('found %d  ids'%len(all_ids))
+    print('found %d unique ids'%len(unique_ids))
 
-good_unique_ids=list(set(ids))
 
-for id in unique_ids:
-    if len(set(studies[id]))>1:
-        print((id,studies[id]))
-        good_unique_ids.remove(id)
+    # exclude studies with multiple N values
+    good_unique_ids=unique_ids
+    for id in unique_ids:
+        if len(set(studies[id]))>1:
+            if verbose:
+                print('excluding:',(id,studies[id]))
+            good_unique_ids.remove(id)
+    return good_unique_ids
+
+david_unique_ids=load_david_worksheet() #verbose=True)
+
 
 # we need pubmed IDs in order to be able to obtain info about the studies
 # and match them to the automated estimates, but not all of the entries
 # in the spreadsheet have a PMID associated with them. for those, we
-# use the DOI to grab the PMID
+# use the DOI to grab the PMID via the CrossRef API
 
-has_pmid=[]
-has_doi=[]
-for id in good_unique_ids:
-    try:
-        has_pmid.append(int(id.value))
-    except:
-        has_doi.append(id)
+# first we need to split the ids into dois and pmids
+def split_pmid_and_doi(ids):
+    pmid=[]
+    doi=[]
+    for id in ids:
+        # if the unique ID is castable as an integer then assume it's a PMID,
+        # otherwise assume it's a DOI
+        try:
+            pmid.append(int(id))
+        except:
+            doi.append(id)
+    return pmid,doi
+
+david_pmids,david_dois=split_pmid_and_doi(david_unique_ids)
+
 
 # get DOI records using crossref api
 
-import pickle
 
-try:
-    doi_records=pickle.load(open('doi_records.pkl','rb'))
-except:
+def get_doi_records_from_crossref(dois,outfile='doi_records.pkl'):
     doi_records={}
     bad_doi=[]
-    for id in has_doi:
-        try:
-            doi_s=id.replace('doi:','').replace(' ','').split('/')
-            assert len(doi_s)>1
-        except:
-            print('found PMID',id)
-            has_pmid.append(id)
-            continue
-        #time.sleep(0.5)
+    for id in dois:
+        doi_s=id.replace('doi:','').replace(' ','').split('/')
+        assert len(doi_s)>1
+
         url='http://api.crossref.org/works/%s/%s'%(doi_s[0],'/'.join(doi_s[1:]))
         print(url)
         resp = requests.get(url)
@@ -98,86 +128,104 @@ except:
             print('Bad resp:',id,resp)
             bad_doi.append(id)
 
-    pickle.dump(doi_records,open('doi_records.pkl','wb'))
+    pickle.dump(doi_records,open(outfile,'wb'))
+    return doi_records,bad_doi
 
+if os.path.exists('doi_records.pkl'):
+    doi_records=pickle.load(open('doi_records.pkl','rb'))
+else:
+    doi_records,bad_dois=get_doi_records_from_crossref(dois)
 
 
 # get pmids for DOIs
 
-try:
-    doi_pmid_cvt=pickle.load(open( 'doi_pmid_cvt.pkl','rb'))
-    doi_pmids=pickle.load(open( 'doi_pmids.pkl','rb'))
-except:
+def get_pmids_for_dois(doi_records,verbose=False):
     print('Grabbing information from pubmed')
     print('This will take a while because we have to throttle our request rate')
     doi_pmid_cvt={}
     doi_pmids=[]
     bad_cvt=[]
     for id in doi_records.keys():
-        try:
-            time.sleep(0.5) # slow down requests so that we don't get locked out
-            handle = Entrez.esearch(db="pubmed", retmax=10, term=id)
-            record = Entrez.read(handle)
-            handle.close()
-            if len(record['IdList'])<1:
-                print('no match, trying title')
-                handle = Entrez.esearch(db="pubmed", retmax=10, term=doi_records[id]['message']['title'][0])
-                record = Entrez.read(handle)
-            if len(record['IdList'])==1:
-                doi_pmid_cvt[id]=record['IdList'][0]
-                doi_pmids.append(record['IdList'][0])
-                print(record['IdList'])
-            else:
-                print('no/bad PMID for %s'%id)
-                print(record['IdList'])
 
-        except:
-            print('problem searching for %s'%id)
+        time.sleep(0.5) # slow down requests so that we don't get locked out
+        # first try searching using the DOI
+        handle = Entrez.esearch(db="pubmed", retmax=10, term=id)
+        record = Entrez.read(handle)
+        handle.close()
+        # if DOI search fails, then try searching using title
+        if len(record['IdList'])!=1:
+            if verbose:
+                print('%d matches for doi, trying title'%len(record['IdList']))
+            handle = Entrez.esearch(db="pubmed", retmax=10, term=doi_records[id]['message']['title'][0])
+            record = Entrez.read(handle)
+
+        if len(record['IdList'])==1:
+            doi_pmid_cvt[id]=record['IdList'][0]
+            doi_pmids.append(record['IdList'][0])
+            if verbose:
+                print(record['IdList'])
+        else:
+            print('no/bad PMID for %s (%d records)'%(id,len(record['IdList'])))
+            if verbose:
+                print(record['IdList'])
+            bad_cvt.append(id)
+
+        if 0:
+            if verbose:
+                print('problem searching for %s'%id)
+            bad_cvt.append(id)
     pickle.dump(doi_pmid_cvt,open( 'doi_pmid_cvt.pkl','wb'))
     pickle.dump(doi_pmids,open( 'doi_pmids.pkl','wb'))
+    return doi_pmids,doi_pmid_cvt,bad_cvt
+
+try:
+    open('foosdf')
+    doi_pmid_cvt=pickle.load(open( 'doi_pmid_cvt.pkl','rb'))
+    doi_pmids=pickle.load(open( 'doi_pmids.pkl','rb'))
+except FileNotFoundError:
+    doi_pmids,doi_pmid_cvt,bad_cvt=get_pmids_for_dois(doi_records,verbose=True)
+
+asdf
+
 
 # get paper information from PMID using Entrez tools
 def get_pmid_data_from_pmid(pmid, delay=0.34,verbose=True):
+
     pmid=int(pmid)
-    try:
-        handle = Entrez.efetch("pubmed", id="%s"%pmid, retmode="xml")
-        time.sleep(delay)
-        records=Entrez.parse(handle)
-        rec=[i for i in records]
-        data={}
-        data['Journal']=rec[0]['MedlineCitation']['Article']['Journal']['ISOAbbreviation']
-        data['Title']=rec[0]['MedlineCitation']['Article']['ArticleTitle']
-        data['Abstract']=rec[0]['MedlineCitation']['Article']['Abstract']['AbstractText']
-        data['PubDate']=rec[0]['MedlineCitation']['Article']['Journal']['JournalIssue']['PubDate']
-        data['DateCreated']=rec[0]['MedlineCitation']['DateCreated']['Year']
-        data['MeshTerms']=[]
-        if len(rec[0]['MedlineCitation']['MeshHeadingList'])>0:
-            for i in range(len(rec[0]['MedlineCitation']['MeshHeadingList'])):
-                data['MeshTerms'].append(str(rec[0]['MedlineCitation']['MeshHeadingList'][i]['DescriptorName']))
-        print((pmid,data))
-        return data,rec
 
-    except:
-        print (pmid,'None')
-        return None,None
+    handle = Entrez.efetch("pubmed", id="%s"%pmid, retmode="xml")
+    time.sleep(delay)
+    records=Entrez.parse(handle)
+    rec=[i for i in records]
+    data={}
+    data['Journal']=rec[0]['MedlineCitation']['Article']['Journal']['ISOAbbreviation']
+    data['Title']=rec[0]['MedlineCitation']['Article']['ArticleTitle']
+    data['Abstract']=rec[0]['MedlineCitation']['Article']['Abstract']['AbstractText']
+    data['PubDate']=rec[0]['MedlineCitation']['Article']['Journal']['JournalIssue']['PubDate']
+    data['DateCreated']=rec[0]['MedlineCitation']['DateCreated']['Year']
+    data['MeshTerms']=[]
+    if len(rec[0]['MedlineCitation']['MeshHeadingList'])>0:
+        for i in range(len(rec[0]['MedlineCitation']['MeshHeadingList'])):
+            data['MeshTerms'].append(str(rec[0]['MedlineCitation']['MeshHeadingList'][i]['DescriptorName']))
+    print((pmid,data))
+    return data,rec
 
 
+pmids=david_pmids + doi_pmids
 
-has_pmid=has_pmid + doi_pmids
-try:
+if os.path.exists('pmid_data.pkl'):
     pmid_data=pickle.load(open('pmid_data.pkl','rb'))
-except:
 
+else:
     pmid_records={}
     pmid_data={}
     problem_pmid=[]
-    for id in has_pmid:
+    for id in pmids:
         d,r=get_pmid_data_from_pmid(id)
         if not d is None:
             pmid_data[id]=d
         else:
             problem_pmid.append(id)
-
     pickle.dump(pmid_data,open('pmid_data.pkl','wb'))
 
 
@@ -262,7 +310,7 @@ lines=[i.strip().split('\t') for i in f.readlines()]
 
 try:
     ns_n_estimates
-except:
+except NameError:
     ns_n_estimates={}
     for l in lines:
         print(l[:2])
@@ -274,7 +322,7 @@ except:
 
 try:
     tal_data=pickle.load(open('tal_data.pkl','rb'))
-except:
+except FileNotFoundError:
     tal_data={}
     tal_problem_pmid=[]
     for l in lines:
