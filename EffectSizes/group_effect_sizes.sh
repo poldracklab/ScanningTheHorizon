@@ -22,9 +22,9 @@ SubjectsFile=$WorkDir/SubjectSelection/IDs_all_cons_and_unrelated.txt
 
 for exp in {0..3} ; do
 
-  ConDir=$WorkDir/GroupAnalyses/tfMRI_${Paradigm[exp]}/
+  ConDir=$WorkDir/03_GroupAnalyses/tfMRI_${Paradigm[exp]}/
 
   # Extract Effectsizes
-  python $WorkDir/EffectSize/EffectSize.py ${Paradigm[exp]} $ConDir $WorkDir/
+  python $WorkDir/04_EffectSize/EffectSize.py ${Paradigm[exp]} $ConDir $WorkDir/
 
 done

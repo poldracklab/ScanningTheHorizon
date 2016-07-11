@@ -24,11 +24,11 @@ SubjectsFile=$WorkDir/SubjectSelection/IDs_all_cons_and_unrelated.txt
 
 for exp in {0..3} ; do
 
-  ConDir=$WorkDir/GroupAnalyses/${Paradigm[exp]}/
+  ConDir=$WorkDir/03_GroupAnalyses/${Paradigm[exp]}/
   mkdir $ConDir
 
   # Make design.fsf and design.grp
-  python $WorkDir/GroupAnalyses/make_design.py $SubjectsFile $ConnectomeInABoxDir ${Paradigm[exp]} ${Contrast[exp]} $ConDir
+  python $WorkDir/03_GroupAnalyses/make_design.py $SubjectsFile $ConnectomeInABoxDir ${Paradigm[exp]} ${Contrast[exp]} $ConDir
 
   # Analyze group stats
   feat $ConDir/design &
