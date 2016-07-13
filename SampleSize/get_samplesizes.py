@@ -401,6 +401,7 @@ def get_neurosynth_data_from_pmids(lines,verbose=False):
         tal_data[pmid]['pubdate']=get_pubdate(tal_data[pmid])
 
     pickle.dump(tal_data,open('tal_data.pkl','wb'))
+    return tal_data
 
 if os.path.exists('tal_data.pkl'):
     tal_data=pickle.load(open('tal_data.pkl','rb'))
