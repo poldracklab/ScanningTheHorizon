@@ -19,6 +19,9 @@ Entrez.email='slacker@harvard.edu'
 # first load David et al data from excel spreadsheet provided by Sean David
 def load_david_worksheet(fname='fMRI MA significance bias database 03-24-13.xlsx',
     verbose=False):
+    """load the David et al. data from excel workbook
+    and return ID and sample size"""
+
     workbook = xlrd.open_workbook(fname)
     sheet=workbook.sheet_by_name('Original Sheet')
 
@@ -78,13 +81,14 @@ def load_david_worksheet(fname='fMRI MA significance bias database 03-24-13.xlsx
     # exclude studies with multiple N values
     good_unique_ids=unique_ids
     for id in unique_ids:
-        if len(set(studies[id]))>1:
+        if len(studies[id])>1:
             if verbose:
                 print('excluding:',(id,studies[id]))
             good_unique_ids.remove(id)
-    return good_unique_ids
+            del studies[id]
+    return good_unique_ids,studies
 
-david_unique_ids=load_david_worksheet() #verbose=True)
+david_unique_ids,studies=load_david_worksheet() #verbose=True)
 
 
 # we need pubmed IDs in order to be able to obtain info about the studies
@@ -94,6 +98,8 @@ david_unique_ids=load_david_worksheet() #verbose=True)
 
 # first we need to split the ids into dois and pmids
 def split_pmid_and_doi(ids):
+    """split the list into integers (which are assumed to be PMIDS)
+    and strings (which are assumed to be DOIs)"""
     pmid=[]
     doi=[]
     for id in ids:
@@ -101,7 +107,7 @@ def split_pmid_and_doi(ids):
         # otherwise assume it's a DOI
         try:
             pmid.append(int(id))
-        except:
+        except ValueError:
             doi.append(id)
     return pmid,doi
 
@@ -112,6 +118,7 @@ david_pmids,david_dois=split_pmid_and_doi(david_unique_ids)
 
 
 def get_doi_records_from_crossref(dois,outfile='doi_records.pkl'):
+    """get information about a DOI"""
     doi_records={}
     bad_doi=[]
     for id in dois:
@@ -124,7 +131,9 @@ def get_doi_records_from_crossref(dois,outfile='doi_records.pkl'):
         try:
             doi_records[id]=resp.json()
             print('success:',id)
-        except:
+        except Exception as e:
+            # TBD: fix this exception to be more specific
+            print(e)
             print('Bad resp:',id,resp)
             bad_doi.append(id)
 
@@ -134,12 +143,13 @@ def get_doi_records_from_crossref(dois,outfile='doi_records.pkl'):
 if os.path.exists('doi_records.pkl'):
     doi_records=pickle.load(open('doi_records.pkl','rb'))
 else:
-    doi_records,bad_dois=get_doi_records_from_crossref(dois)
+    doi_records,bad_dois=get_doi_records_from_crossref(david_dois)
 
 
-# get pmids for DOIs
+# get pmid for each DOI
 
 def get_pmids_for_dois(doi_records,verbose=False):
+    """ use entrez API to identify PMID from the DOI"""
     print('Grabbing information from pubmed')
     print('This will take a while because we have to throttle our request rate')
     doi_pmid_cvt={}
@@ -179,24 +189,26 @@ def get_pmids_for_dois(doi_records,verbose=False):
     return doi_pmids,doi_pmid_cvt,bad_cvt
 
 try:
-    open('foosdf')
     doi_pmid_cvt=pickle.load(open( 'doi_pmid_cvt.pkl','rb'))
     doi_pmids=pickle.load(open( 'doi_pmids.pkl','rb'))
 except FileNotFoundError:
     doi_pmids,doi_pmid_cvt,bad_cvt=get_pmids_for_dois(doi_records,verbose=True)
 
-asdf
 
 
 # get paper information from PMID using Entrez tools
-def get_pmid_data_from_pmid(pmid, delay=0.34,verbose=True):
+def get_pmid_data_from_pmid(pmid, delay=0.34,verbose=False):
+    """ use entrez API tool to get full record for a PMID"""
 
     pmid=int(pmid)
-
     handle = Entrez.efetch("pubmed", id="%s"%pmid, retmode="xml")
     time.sleep(delay)
     records=Entrez.parse(handle)
     rec=[i for i in records]
+    if len(rec)>1:
+        print('Warning: record of length >1',pmid,rec)
+    if verbose:
+        print(rec)
     data={}
     data['Journal']=rec[0]['MedlineCitation']['Article']['Journal']['ISOAbbreviation']
     data['Title']=rec[0]['MedlineCitation']['Article']['ArticleTitle']
@@ -207,32 +219,41 @@ def get_pmid_data_from_pmid(pmid, delay=0.34,verbose=True):
     if len(rec[0]['MedlineCitation']['MeshHeadingList'])>0:
         for i in range(len(rec[0]['MedlineCitation']['MeshHeadingList'])):
             data['MeshTerms'].append(str(rec[0]['MedlineCitation']['MeshHeadingList'][i]['DescriptorName']))
-    print((pmid,data))
+    if verbose:
+        print(pmid,data)
     return data,rec
 
 
 pmids=david_pmids + doi_pmids
+def get_all_pmid_data(pmids):
+    """loop through a set of PMIDS and grab the record data for each"""
 
-if os.path.exists('pmid_data.pkl'):
-    pmid_data=pickle.load(open('pmid_data.pkl','rb'))
-
-else:
-    pmid_records={}
     pmid_data={}
     problem_pmid=[]
     for id in pmids:
-        d,r=get_pmid_data_from_pmid(id)
-        if not d is None:
-            pmid_data[id]=d
-        else:
+        try:
+            d,r=get_pmid_data_from_pmid(id)
+        except KeyError:
             problem_pmid.append(id)
-    pickle.dump(pmid_data,open('pmid_data.pkl','wb'))
+        else:
+            pmid_data[id]=d
+    pickle.dump(pmid_data,open('david_pmid_data.pkl','wb'))
+    return pmid_data,problem_pmid
+
+if os.path.exists('david_pmid_data.pkl'):
+    pmid_data=pickle.load(open('david_pmid_data.pkl','rb'))
+else:
+    pmid_data,problem_pmid=get_all_pmid_data(pmids)
 
 
 # check for specific mention of fMRI-related terms
 # to filter out non-fMRI papers
 
-def filter_fMRI_terms(pmids,fmri_terms=['fMRI','functional MRI','functional magnetic resonance']):
+def filter_fMRI_terms(pmids,fmri_terms=['fMRI','functional MRI',
+                        'functional magnetic resonance']):
+    """ return pmids that include fMRI-related terms
+    in MESH keywords or abstract or title"""
+
     good_pmids={}
     for pmid in pmids.keys():
         goodkey=0
@@ -252,38 +273,52 @@ print('original David list: %d items'%len(pmid_data))
 pmid_data=filter_fMRI_terms(pmid_data)
 print('filtered David list: %d items'%len(pmid_data))
 
+def get_pubdate(pmidrec):
+        try:
+            pubdate=int(pmidrec['PubDate']['Year'])
+        except KeyError:
+            pubdate=int(pmidrec['PubDate']['MedlineDate'].split(' ')[0])
+        return pubdate
+
  # get N for each
+def get_n_and_date_for_david_pmids(doi_pmid_cvt,pmid_data):
+    """get sample size and date for each PMID"""
 
-pmid_doi_cvt={}
-for k in doi_pmid_cvt.keys():
-    pmid_doi_cvt[int(doi_pmid_cvt[k])]=k
+    # create the reverse dictionary
+    pmid_doi_cvt={}
+    for k in doi_pmid_cvt.keys():
+        pmid_doi_cvt[int(doi_pmid_cvt[k])]=k
 
-sampsize={}
-pubyear={}
-for id in pmid_data.keys():
-    iid=int(id)
-    if not iid in pmid_data.keys():
-        pmid_data[iid]=pmid_data[id]
-        del pmid_data[id]
+    sampsize={}
+    pubyear={}
+    for id in pmid_data.keys():
+        # convert string ids to integer
+        iid=int(id)
+        if not iid in pmid_data.keys():
+            pmid_data[iid]=pmid_data[id]
+            del pmid_data[id]
 
-    # the date can be stored in one of two fields in the pubmed record
-    if 'PubDate' in pmid_data[iid]:
-        try:
-            pubyear[iid]=int(pmid_data[iid]['PubDate']['Year'])
-        except:
-            pubyear[iid]=int(pmid_data[iid]['PubDate']['MedlineDate'].split(' ')[0])
-    if iid in pmid_doi_cvt:
-        k=pmid_doi_cvt[iid]
-    else:
-        k=iid
-    if k in studies:
-        try:
-            sampsize[iid]=int(studies[k][0])
-        except:
-            print(('bad sample size:',studies[k][0]))
+        # the date can be stored in one of two fields in the pubmed record
+        if 'PubDate' in pmid_data[iid]:
+            pubyear[iid]=get_pubdate(pmid_data[iid])
 
-    else:
-        print(k)
+        # WTF?
+        if iid in pmid_doi_cvt:
+            k=pmid_doi_cvt[iid]
+        else:
+            k=iid
+
+        if k in studies:
+            try:
+                sampsize[iid]=int(studies[k][0])
+            except:
+                print(('bad sample size:',studies[k][0]))
+
+        else:
+            print(k,'not found in studies')
+    return pubyear,sampsize
+
+pubyear,sampsize=get_n_and_date_for_david_pmids(doi_pmid_cvt,pmid_data)
 
 sampsizes=[]
 pubyears=[]
@@ -301,28 +336,38 @@ numpy.savetxt('david_sampsizedata.txt',alldata)
 
 
 # load neurosynth data
-f=open('estimated_n.txt')
-header=f.readline()
-lines=[i.strip().split('\t') for i in f.readlines()]
+
+def load_neurosynth_data(infile='estimated_n.txt'):
+    f=open(infile)
+    header=f.readline()
+    lines=[i.strip().split('\t') for i in f.readlines()]
+    return lines
+
+lines=load_neurosynth_data()
 
 # get all N estimates for each pmid
 # previously we had just taken the first but that was problematic
 
-try:
-    ns_n_estimates
-except NameError:
+
+def get_neurosynth_n_estimates(lines,verbose=False):
+    """extract pmid and estimated n from lines of text file"""
     ns_n_estimates={}
     for l in lines:
-        print(l[:2])
+        if verbose:
+            print(l[:2])
         pmid=int(l[0])
         if not pmid in ns_n_estimates.keys():
             ns_n_estimates[pmid]=[]
         ns_n_estimates[pmid].append(int(l[1]))
+    return ns_n_estimates
 
 
-try:
-    tal_data=pickle.load(open('tal_data.pkl','rb'))
-except FileNotFoundError:
+
+
+
+def get_neurosynth_data_from_pmids(lines,verbose=False):
+    ns_n_estimates=get_neurosynth_n_estimates(lines)
+
     tal_data={}
     tal_problem_pmid=[]
     for l in lines:
@@ -333,34 +378,35 @@ except FileNotFoundError:
 
         if len(ns_n_estimates[pmid])>1:
             continue
-        if not pmid in tal_data:
-            tal_data[pmid],_=get_pmid_data_from_pmid(pmid)
-        print(tal_data[pmid],l[1:])
-
         try:
-            tal_data[pmid]['nest']=ns_n_estimates[pmid]
-        except:
-            del tal_data[pmid]
+            assert pmid in ns_n_estimates
+        except AssertionError:
+            if verbose:
+                print('missing n estimate:',pmid)
             continue
 
-        tal_data[pmid]['pubdate']=None
-        try:
-            tal_data[pmid]['pubdate']=int(tal_data[pmid]['PubDate']['Year'])
-        except:
-            tal_data[pmid]['pubdate']=int(tal_data[pmid]['PubDate']['MedlineDate'].split(' ')[0])
+        if not pmid in tal_data:
+            try:
+                tal_data[pmid],_=get_pmid_data_from_pmid(pmid)
+            except KeyError:
+                continue
+        else:
+            raise Exception('duplicate pmids - check this out')
+
+        tal_data[pmid]['nest']=ns_n_estimates[pmid]
+
+        if verbose:
+            print(tal_data[pmid],l[1:])
+
+        tal_data[pmid]['pubdate']=get_pubdate(tal_data[pmid])
 
     pickle.dump(tal_data,open('tal_data.pkl','wb'))
 
-match_pmid=[]
-tal_est=[]
-david_est=[]
-for l in lines:
-    pmid=int(l[0])
+if os.path.exists('tal_data.pkl'):
+    tal_data=pickle.load(open('tal_data.pkl','rb'))
+else:
+    tal_data=get_neurosynth_data_from_pmids(lines)
 
-    if pmid in pmid_data and pmid in tal_data:
-        match_pmid.append(pmid)
-        david_est.append(sampsize[pmid])
-        tal_est.append(tal_data[pmid]['nest'])
 
 print('original neurosynth list: %d items'%len(tal_data))
 tal_data=filter_fMRI_terms(tal_data)
