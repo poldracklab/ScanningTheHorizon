@@ -33,9 +33,12 @@ def get_pmid_data_from_pmid(pmid, delay=0.34,verbose=False,email='slacker@harvar
     data['PubDate']=get_pubdate(pubdaterec)
     data['DateCreated']=rec[0]['MedlineCitation']['DateCreated']['Year']
     data['MeshTerms']=[]
-    if len(rec[0]['MedlineCitation']['MeshHeadingList'])>0:
-        for i in range(len(rec[0]['MedlineCitation']['MeshHeadingList'])):
-            data['MeshTerms'].append(str(rec[0]['MedlineCitation']['MeshHeadingList'][i]['DescriptorName']))
+    if 'MeshHeadingList' in rec[0]['MedlineCitation']:
+        if len(rec[0]['MedlineCitation']['MeshHeadingList'])>0:
+            for i in range(len(rec[0]['MedlineCitation']['MeshHeadingList'])):
+                data['MeshTerms'].append(str(rec[0]['MedlineCitation']['MeshHeadingList'][i]['DescriptorName']))
+                
+
     if verbose:
         print(pmid,data)
     return data,rec
