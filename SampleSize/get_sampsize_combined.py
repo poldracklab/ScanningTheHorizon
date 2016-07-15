@@ -43,6 +43,14 @@ else:
     pmidrecs=filter_fMRI_terms(pmidrecs)
     pickle.dump(pmidrecs,open('fullset_pmid_records.pkl','wb'))
 
+pubyears=[]
+for i in range(wsdata.shape[0]):
+    try:
+        pubyears.append(pmidrecs[wsdata.PMID.iloc[i]]['PubDate'])
+    except KeyError:
+        pubyears.append('n/a')
+wsdata['pubdate']=numpy.array(pubyears)
+wsdata.to_csv('fullset_with_pubyears.csv')
 
 # get single-study and group sizes
 
@@ -85,16 +93,20 @@ for k in group_sizes:
 for b in list(set(bad_groups)):
     del group_sizes[b]
 
+dates=numpy.arange(2011,2016)
+
 study_data=[]
 for pmid in study_sizes:
     if pmid in study_sizes and pmid in pmidrecs:
-        study_data.append([pmid,pmidrecs[pmid]['PubDate'],study_sizes[pmid]])
+        if pmidrecs[pmid]['PubDate'] in dates:
+            study_data.append([pmid,pmidrecs[pmid]['PubDate'],study_sizes[pmid]])
 
 group_data=[]
 for pmid in group_sizes:
     if pmid in group_sizes and pmid in pmidrecs:
-        for n in group_sizes[pmid]:
-            group_data.append([pmid,pmidrecs[pmid]['PubDate'],n])
+        if pmidrecs[pmid]['PubDate'] in dates:
+            for n in group_sizes[pmid]:
+                group_data.append([pmid,pmidrecs[pmid]['PubDate'],n])
 
 numpy.savetxt('neurosynth_study_data.txt',numpy.array(study_data))
 numpy.savetxt('neurosynth_group_data.txt',numpy.array(group_data))
