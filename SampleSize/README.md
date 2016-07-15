@@ -8,10 +8,11 @@ To run all analyses, use <p>make all</p>
 
 #### David et al. data
 
-Manaully annotated sample size data were obtained from Sean David, which
-had been created for this paper:
+Manaully annotated sample size data were obtained from Sean David, Pooja Loftus, and
+Isabella Chu, which were originally created for this paper:
 
 [David SP, Ware JJ, Chu IM, Loftus PD, Fusar-Poli P, Radua J, et al. (2013) Potential Reporting Bias in fMRI Studies of the Brain. PLoS ONE 8(7): e70104. doi:10.1371/journal.pone.0070104](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0070104)
+
 
 The original data are in the file titled "fMRI MA significance bias database 03-24-13.xlsx"
 
