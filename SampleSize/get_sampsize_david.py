@@ -226,12 +226,6 @@ print('original David list: %d items'%len(pmid_data))
 pmid_data=filter_fMRI_terms(pmid_data)
 print('filtered David list: %d items'%len(pmid_data))
 
-def get_pubdate(pmidrec):
-        try:
-            pubdate=int(pmidrec['PubDate']['Year'])
-        except KeyError:
-            pubdate=int(pmidrec['PubDate']['MedlineDate'].split(' ')[0])
-        return pubdate
 
  # get N for each
 def get_n_and_date_for_david_pmids(doi_pmid_cvt,pmid_data):
@@ -253,7 +247,7 @@ def get_n_and_date_for_david_pmids(doi_pmid_cvt,pmid_data):
 
         # the date can be stored in one of two fields in the pubmed record
         if 'PubDate' in pmid_data[iid]:
-            pubyear[iid]=get_pubdate(pmid_data[iid])
+            pubyear[iid]=pmid_data[iid]['PubDate']
 
         # WTF?
         if iid in pmid_doi_cvt:
