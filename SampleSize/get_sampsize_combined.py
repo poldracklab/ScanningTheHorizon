@@ -40,8 +40,9 @@ if os.path.exists('fullset_pmid_records.pkl'):
     pmidrecs=pickle.load(open('fullset_pmid_records.pkl','rb'))
 else:
     pmidrecs,problem_pmids=get_pubmed_records(wsdata)
-    pmidrecs_goodkeys=filter_fMRI_terms(pmidrecs).keys()
+    pmidrecs=filter_fMRI_terms(pmidrecs)
     pickle.dump(pmidrecs,open('fullset_pmid_records.pkl','wb'))
+
 
 # get single-study and group sizes
 
@@ -75,9 +76,15 @@ def get_study_and_group_sizes(wsdata,verbose=False):
     return study_sizes,group_sizes
 
 study_sizes,group_sizes=get_study_and_group_sizes(wsdata)
+
+bad_groups=[]
 for k in group_sizes:
     if len(group_sizes[k])<2:
         print('only one n for',k)
+        bad_groups.append(k)
+for b in list(set(bad_groups)):
+    del group_sizes[b]
+
 study_data=[]
 for pmid in study_sizes:
     if pmid in study_sizes and pmid in pmidrecs:
