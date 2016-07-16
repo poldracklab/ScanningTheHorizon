@@ -1,0 +1,3 @@
+GroupAnalyses/tfMRI_*/group.gfeat
+CreateMasks/masks/*
+*nii.gz
