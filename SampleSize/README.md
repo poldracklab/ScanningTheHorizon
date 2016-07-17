@@ -36,7 +36,7 @@ annotation process:
 3) I made a note of how many groups I thought there were and how many participants are in each. You mentioned not to worry about some of the finer distinctions so I tried to group them according to the criteria that was relevant to the goal of the study, and generally to features that were known/decided before the study rather than discovered differences. I think I also tried to make sure that the sum of the groups equaled the total number of subjects in the study, so if there were multiples ways of dividing up the subjects, I choose what seemed like the best one to avoid including the same subject more than once. I also gave Tal's program the benefit of the doubt a little bit, meaning if I wasn't sure how to divide the subjects into groups, I went with the way the program had done it.
 4) I recorded the number of participants per group in column C, with each row corresponding to a group. If there were multiple groups, I wrote the word 'group' in column D for each group, and if there was only one, I wrote 'study'. If my number of groups for a study was greater than that already present, I added rows, filling in columns C and D and leaving columns B and E blank. If I thought there fewer groups, I wrote 'n/a' in the columns C and D for the rows I thought were unnecessary.
 
-These data were saved into the file estimated_n_format_real.csv.  They were
+These data were saved into the file estimated_n_format_2011-2015numbers.csv.  They were
 further processed using get_sampsize_neurosynth.py which retreived the paper
 metadata from the Entrez API and also filtered papers based on the inclusion
 of terms relevant to fMRI (to exclude PET and structural studies). This generated
