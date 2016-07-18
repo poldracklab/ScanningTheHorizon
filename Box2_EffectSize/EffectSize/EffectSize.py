@@ -47,6 +47,7 @@ for a in range(len(Masks[Contrast])):
     #print(mask_ind)
 
     # export values
+    cohen = D[mask_ind.x,mask_ind.y,mask_ind.z]
     COHENSD = np.nanmedian(D[mask_ind.x,mask_ind.y,mask_ind.z])
     COHENS10 = np.nanpercentile(D[mask_ind.x,mask_ind.y,mask_ind.z],10)
     COHENS90 = np.nanpercentile(D[mask_ind.x,mask_ind.y,mask_ind.z],90)
@@ -54,23 +55,28 @@ for a in range(len(Masks[Contrast])):
 
     # compute percent bold
 
-    featquery_cmd = "featquery 1 %s/group.gfeat/cope1.feat 2 stats/pe1 stats/cope1 featquery -p -s -w -b %s" %(ConDir,mask)
+    featquery_cmd = "%s/EffectSize/featquery 1 %s/group.gfeat/cope1.feat 2 stats/pe1 stats/cope1 featquery -p -s -w -b %s" %(OutDir,ConDir,mask)
     os.popen(featquery_cmd).read()
 
     featquery_file = ConDir+"group.gfeat/cope1.feat/featquery/report.txt"
     for line in open(featquery_file):
         list = line.split(" ")
 
-    # devide by 2 (except motor) because the contrastmatrices are [1 -1]
-    # motor is just an average effect
-    if Contrast == "MOTOR":
-        PERCENT = float(list[6])
-        PERCENT10 = float(list[4])
-        PERCENT90 = float(list[7])
-    else:
-        PERCENT = float(list[6])/2
-        PERCENT10 = float(list[4])/2
-        PERCENT90 = float(list[7])/2
+    Pfile = ConDir+"group.gfeat/cope1.feat/featquery/percentchange.nii.gz"
+    P = nib.load(Pfile).get_data()
+    percent = P[mask_ind.x,mask_ind.y,mask_ind.z]
+    PERCENT = float(list[6])
+    PERCENT10 = float(list[4])
+    PERCENT90 = float(list[7])
+
+    with open(os.path.join(OutDir,"EffectSize","cohensd_"+Contrast+"_"+Masks[Contrast][a][0]+".csv"),'a') as output_file:
+        dict_writer = csv.writer(output_file)
+        for line in cohen:
+            dict_writer.writerow([line])
+    with open(os.path.join(OutDir,"EffectSize","percent_"+Contrast+"_"+Masks[Contrast][a][0]+".csv"),'a') as output_file:
+        dict_writer = csv.writer(output_file)
+        for line in percent:
+            dict_writer.writerow([line])
 
     shutil.rmtree(ConDir+"group.gfeat/cope1.feat/featquery/")
 
