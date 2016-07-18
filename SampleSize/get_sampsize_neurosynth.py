@@ -11,7 +11,7 @@ import numpy,pandas
 from get_pmid_data_from_pmid import get_pmid_data_from_pmid
 from filter_fMRI_terms import filter_fMRI_terms
 
-def load_worksheet(fname='estimated_n_format_real.csv',verbose=True):
+def load_worksheet(fname='estimated_n_format_2011-2015numbers.csv',verbose=True):
     """load data and clean up"""
     d=pandas.read_csv(fname)
     # drop entries with no PMID
@@ -67,10 +67,11 @@ def get_study_and_group_sizes(wsdata,verbose=False):
             print(pmid,kind,n_actual)
         if kind=='study':
             # make sure there are no duplicates
-            assert pmid not in study_sizes
             try:
+                assert pmid not in study_sizes
+
                 study_sizes[pmid]=int(n_actual)
-            except ValueError:
+            except (ValueError,AssertionError):
                 print('skipping',pmid,n_actual)
                 continue
         elif kind=='group':

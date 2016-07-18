@@ -6,4 +6,5 @@ estimate_n:
 	python get_ns_sample_sizes.py
 
 get_samplesize:
-	python get_samplesizes.py
+	python get_sampsize_david.py
+	python get_sampsize_neurosynth.py
