@@ -10,9 +10,9 @@ In this repository, we explore the effect sizes of common psychological paradigm
   - WORKING MEMORY: 2-back - 0-back
 3. **CreateMasks**:  The masks used for the analyses are the intersections of anatomical and functional masks for each contrast.
   - Functional:  We've created masks using [neurosynth](www.neurosynth.org).  We've used the search terms ["Motor","Emotion","Gambling","Working memory"] and have used meta-analyses with FDR-control at 0.01 and Forward Inference.
-  - Anatomical: We've used Harvard-Oxford probabilistic atlas at p>0.25.  We've selected the following anatomical regions for the contrasts:
+  - Anatomical: We've used Harvard-Oxford probabilistic atlas at p>0.  We've selected the following anatomical regions for the contrasts:
 
- | Contrast | Mask (intersected with neurosynth meta-analyse map) |
+ | Task | Intersection mask |
  | -------- | ---- |
  | Motor | Precentral gyrus |
  || Supplementary motor cortex |
@@ -24,4 +24,4 @@ In this repository, we explore the effect sizes of common psychological paradigm
  | Gambling | Left accumbens |
  || Right accumbens |
 
-4. **EffectSize**: This script computes Cohen's D over the whole brain and takes the median (and the 10 and 90 percentile) within the masks created before.  Featquery is called to compute %BOLD change within the masks (and outputs as well the 10 and 90 percentile).
+4. **EffectSize**: This script computes Cohen's D over the whole brain and takes the median (and the 10 and 90 percentile) within the masks created before.  Featquery is called to compute voxelwise %BOLD change within the masks.
