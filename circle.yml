@@ -1,10 +1,8 @@
 machine:
   python:
     version: 3.5.1
-dependencies:
-  pre:
-    - pip install -r requirements.txt
 
 test:
   override:
-    - make -C SampleSize/ all
+    - make -C SampleSize/ all:
+      timeout: 6000
