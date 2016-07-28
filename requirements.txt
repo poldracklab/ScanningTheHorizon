@@ -2,3 +2,4 @@ numpy
 biopython
 xlrd
 requests
+pandas
