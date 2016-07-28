@@ -2,7 +2,17 @@ machine:
   python:
     version: 3.5.1
 
+dependencies:
+  pre:
+      # Let CircleCI cache the apt archive
+      - sudo rm -rf /var/cache/apt/archives && sudo ln -s ~/.apt-cache /var/cache/apt/archives && mkdir -p ~/.apt-cache/partial
+      - bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
+  override:
+      # Install apt packages
+      - sudo apt-get install -y fsl-core fsl-atlases fsl-mni152-templates
+      - echo 'source /etc/fsl/fsl.sh' >> $HOME/.profile
 test:
   override:
     - make -C SampleSize/ all :
         timeout: 6000
+    - source $HOME/.profile; runipy Figure1_Power/fig_power.ipynb
