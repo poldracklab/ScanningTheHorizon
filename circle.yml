@@ -4,5 +4,5 @@ machine:
 
 test:
   override:
-    - make -C SampleSize/ all:
+    - make -C SampleSize/ all :
       timeout: 6000
