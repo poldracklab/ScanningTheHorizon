@@ -3,3 +3,4 @@ biopython
 xlrd
 requests
 pandas
+jupyter

@@ -11,6 +11,7 @@ dependencies:
       # Install apt packages
       - sudo apt-get install -y fsl-core fsl-atlases fsl-mni152-templates
       - echo 'source /etc/fsl/fsl.sh' >> $HOME/.profile
+      - pip install runipy
 test:
   override:
     - make -C SampleSize/ all :
