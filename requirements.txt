@@ -1,0 +1,6 @@
+numpy
+biopython
+xlrd
+requests
+pandas
+jupyter
