@@ -2,11 +2,6 @@ machine:
   python:
     version: 3.5.1
 
-dependencies:
-  pre:
-      # Let CircleCI cache the apt archive
-      - sudo rm -rf /var/cache/apt/archives && sudo ln -s ~/.apt-cache /var/cache/apt/archives && mkdir -p ~/.apt-cache/partial
-      - bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
 test:
   override:
     - make -C SampleSize/ all :
